@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AP Invoice Validation & Matching Architecture — Enterprise Flowchart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Control Bar */
+    header.toolbar {
+      height: 60px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      background: #F37021;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-sub {
+      font-size: 11px;
+      font-weight: 700;
+      background: #FFF4ED;
+      color: #F37021;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #FFD2B8;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: #64748B;
+    }
+
+    /* Controls */
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+
+    .btn.primary {
+      background: #F37021;
+      color: white;
+      border-color: #E0621A;
+    }
+
+    .btn.primary:hover {
+      background: #E0621A;
+    }
+
+    .zoom-level {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      min-width: 45px;
+      text-align: center;
+    }
+
+    /* Viewport & Canvas */
+    #viewport {
+      flex: 1;
+      overflow: auto;
+      background-color: #FAFAFA;
+      background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+      background-size: 24px 24px;
+      cursor: grab;
+      position: relative;
+    }
+
+    #viewport.dragging {
+      cursor: grabbing;
+    }
+
+    #svg-container {
+      width: 1600px;
+      height: 3450px;
+      margin: 40px auto;
+      transform-origin: top center;
+      transition: transform 0.15s ease;
+    }
+
+    /* SVG Styling */
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .flow-node {
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .flow-node:hover rect, .flow-node:hover polygon {
+      stroke-width: 3.5px !important;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)) !important;
+    }
+
+    .animated-loop {
+      animation: dashMove 20s linear infinite;
+    }
+
+    @keyframes dashMove {
+      to { stroke-dashoffset: -1000; }
+    }
+
+    /* Modal Tooltip */
+    #node-modal {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 380px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+      padding: 16px;
+      z-index: 200;
+      display: none;
+    }
+
+    #node-modal.visible {
+      display: block;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #F1F5F9;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .modal-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal-desc {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .modal-code {
+      margin-top: 10px;
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="toolbar">
+    <div class="brand-title">
+      <div class="brand-logo">E</div>
+      <div class="brand-text">
+        <h1>AP Invoice Validation Flowchart <span class="badge-sub">Oracle Fusion BIP &bull; Enact</span></h1>
+        <p>Enterprise Architectural Vector Flow &bull; Two-Column Layout (Happy Path vs Exception & HITL)</p>
+      </div>
+    </div>
+
+    <div class="controls-group">
+      <button class="btn" onclick="zoomBy(-0.15)">−</button>
+      <span class="zoom-level" id="zoom-text">100%</span>
+      <button class="btn" onclick="zoomBy(0.15)">+</button>
+      <button class="btn" onclick="resetZoom()">100%</button>
+      <button class="btn primary" onclick="fitView()">Fit Width</button>
+    </div>
+  </header>
+
+  <div id="viewport">
+    <div id="svg-container">
+      <svg viewBox="0 0 1600 3450">
+        <defs>
+          <filter id="drop-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.06"/>
+          </filter>
+          <filter id="badge-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+          </filter>
+
+          <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563EB"/>
+          </marker>
+          <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#16A34A"/>
+          </marker>
+          <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444"/>
+          </marker>
+          <marker id="arrow-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7C3AED"/>
+          </marker>
+        </defs>
+
+        <!-- SWIMLANES -->
+        <!-- Happy Path Lane -->
+        <g id="lane-happy">
+          <rect x="60" y="40" width="860" height="3370" rx="16" ry="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+          <rect x="60" y="40" width="860" height="42" rx="16" ry="16" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1.5"/>
+          <text x="84" y="67" font-size="13" font-weight="800" fill="#15803D" font-family="Inter, sans-serif" letter-spacing="0.05em">
+            ✔ POSITIVE FLOW (HAPPY PATH: INGESTION &rarr; BIP VALIDATION &rarr; ORACLE AP CREATION)
+          </text>
+        </g>
+
+        <!-- Exception Lane -->
+        <g id="lane-error">
+          <rect x="960" y="40" width="580" height="3370" rx="16" ry="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+          <rect x="960" y="40" width="580" height="42" rx="16" ry="16" fill="#FEF2F2" stroke="#FECACA" stroke-width="1.5"/>
+          <text x="984" y="67" font-size="13" font-weight="800" fill="#B91C1C" font-family="Inter, sans-serif" letter-spacing="0.05em">
+            ⚠ NEGATIVE FLOW (EXCEPTIONS, VALIDATION FAILURES &amp; HITL REVIEW)
+          </text>
+        </g>
+
+        <!-- EDGES -->
+        <g id="edges-layer">
+          <path d="M 420 125.0 L 420 168.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 232.0 L 420 268.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 352.0 L 420 388.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 472.0 L 420 518.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 582.0 L 420 628.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 712.0 L 420 748.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 812.0 L 420 858.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 922.0 L 420 958.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 1042.0 L 420 1068.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 1152.0 L 420 1178.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 1262.0 L 420 1288.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 1372.0 L 420 1398.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 1482.0 L 420 1523.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 295.0 1570 H 250 V 1678.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 545.0 1570 H 600 V 1678.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 250 1762.0 L 250 1788.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 250 1872.0 L 250 1898.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 250 1982.0 L 250 2008.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 250 2092.0 L 250 2128.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 250 2192.0 V 2360.0 H 420 V 2528.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 600 1762.0 L 600 1788.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 490.0 1830 H 470 V 1918.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 710.0 1830 H 750 V 1918.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 470 2002.0 L 470 2028.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 470 2112.0 L 470 2138.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 470 2222.0 L 470 2248.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 470 2332.0 L 470 2368.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 470 2432.0 V 2480.0 H 420 V 2528.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 750 2002.0 L 750 2028.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 750 2112.0 L 750 2148.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 750 2212.0 L 750 2368.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 750 2432.0 V 2480.0 H 420 V 2528.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 2592.0 L 420 2638.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 420 2702.0 L 420 2750.0" fill="none" stroke="#16A34A" stroke-width="3"  marker-end="url(#arrow-green)"/><path d="M 530.0 310 L 1050.0 310" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 430 L 1050.0 430" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 670 L 1050.0 670" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 1000 L 1050.0 1000" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 1110 L 1050.0 1110" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 1220 L 1050.0 1220" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 1330 L 1050.0 1330" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 530.0 1440 L 1050.0 1440" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 360.0 1720 H 705.0 V 1880 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 360.0 1830 H 705.0 V 1880 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 360.0 1940 H 705.0 V 1880 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 360.0 2050 H 705.0 V 1880 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 710.0 1720 L 1050.0 1720" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 580.0 1960 H 815.0 V 2180 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 580.0 2070 H 815.0 V 2180 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 580.0 2180 L 1050.0 2180" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 580.0 2290 H 815.0 V 2180 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 860.0 1960 H 955.0 V 2070 H 1050.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 860.0 2070 L 1050.0 2070" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 700.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1030.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1140.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1250.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1360.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1470.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1910.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 1750.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 2210.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 2100.0 L 1180 2565.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1180 2635.0 L 1180 2690.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 1180 2770.0 L 1180 2833.0" fill="none" stroke="#2563EB" stroke-width="2.5"  marker-end="url(#arrow-blue)"/><path d="M 1055.0 2880 H 1040 V 2985.0" fill="none" stroke="#EF4444" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-red)"/><path d="M 1305.0 2880 H 1320 V 2985.0" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-dasharray="8,4" class="animated-loop" marker-end="url(#arrow-purple)"/><path d="M 1430.0 3010 H 1530 V 780 H 540.0" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-dasharray="8,4" class="animated-loop" marker-end="url(#arrow-purple)"/>
+        </g>
+
+        <!-- BADGES -->
+        <g id="badges-layer">
+          <g transform="translate(420,370.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">PASS</text></g><g transform="translate(420,495.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,730.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">PASS</text></g><g transform="translate(420,1055.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,1165.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,1275.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,1385.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,1502.5)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">PASS</text></g><g transform="translate(250,1570)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">PREPAY</text></g><g transform="translate(600,1570)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">STANDARD</text></g><g transform="translate(250,1775.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(250,1885.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(250,1995.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">MATCH</text></g><g transform="translate(250,2110.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(600,1775.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">MATCH</text></g><g transform="translate(470,1830)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">REQ = 'Y'</text></g><g transform="translate(750,1830)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">REQ = 'N'</text></g><g transform="translate(470,2015.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(470,2125.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(470,2235.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(470,2350.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(750,2015.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(750,2130.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#2563EB" font-family="Inter, sans-serif">YES</text></g><g transform="translate(420,2726.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#16A34A" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#16A34A" font-family="Inter, sans-serif">201 POST</text></g><g transform="translate(790.0,310)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">FAIL</text></g><g transform="translate(790.0,430)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(790.0,670)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">FAIL</text></g><g transform="translate(790.0,1000)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(790.0,1110)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(790.0,1220)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(790.0,1330)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(790.0,1440)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">FAIL</text></g><g transform="translate(705.0,1880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(705.0,1880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(705.0,1880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(705.0,1880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(880.0,1720)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(815.0,2180)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(815.0,2180)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(815.0,2180)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(815.0,2180)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(955.0,2070)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(955.0,2070)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">NO</text></g><g transform="translate(1040,2880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" font-family="Inter, sans-serif">REJECT</text></g><g transform="translate(1320,2880)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#7C3AED" font-family="Inter, sans-serif">APPROVE</text></g><g transform="translate(1530,1895.0)"><rect x="-35" y="-11" width="70" height="22" rx="11" ry="11" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.5" filter="url(#badge-shadow)"/><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#7C3AED" font-family="Inter, sans-serif">RE-DISPATCH</text></g>
+        </g>
+
+        <!-- NODES -->
+        <g id="nodes-layer">
+          <g class="flow-node" id="node-start" onclick="inspectNode('start')"><rect x="320.0" y="75.0" width="200" height="50" rx="25.0" ry="25.0" fill="#F0FDF4" stroke="#16A34A" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="420" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">START: New Invoice Received</text></g><g class="flow-node" id="node-ocr" onclick="inspectNode('ocr')"><rect x="300.0" y="168.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="185" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">1. OCR Text Extraction</text><text x="420" y="203" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Extract raw tokens & layout</text><text x="420" y="222.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">OcrStep</text></g><g class="flow-node" id="node-d_preflight" onclick="inspectNode('d_preflight')"><polygon points="420,268.0 530.0,310 420,352.0 310.0,310" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="302" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">PreFlight Valid?</text><text x="420" y="318" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">MIME & Size <= 50MB</text></g><g class="flow-node" id="node-d_classify" onclick="inspectNode('d_classify')"><polygon points="420,388.0 530.0,430 420,472.0 310.0,430" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="422" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Document Type</text><text x="420" y="438" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">= INVOICE?</text></g><g class="flow-node" id="node-llm" onclick="inspectNode('llm')"><rect x="300.0" y="518.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="535" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">2. Bedrock LLM Extraction</text><text x="420" y="553" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Extracts Header, Lines & Type</text><text x="420" y="572.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">ExtractStep</text></g><g class="flow-node" id="node-d_enact_gate" onclick="inspectNode('d_enact_gate')"><polygon points="420,628.0 530.0,670 420,712.0 310.0,670" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="662" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Enact Quality Gate?</text><text x="420" y="678" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Confidence >= 0.80 & Fields</text></g><g class="flow-node" id="node-dispatch" onclick="inspectNode('dispatch')"><rect x="300.0" y="748.0" width="240" height="64" rx="8" ry="8" fill="#F0FDFA" stroke="#0D9488" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="420" y="765" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">3. Dispatch to OIC Integration</text><text x="420" y="783" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Builds payload & triggers BIP</text><text x="420" y="802.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">DispatchStep</text></g><g class="flow-node" id="node-bip_dm" onclick="inspectNode('bip_dm')"><rect x="300.0" y="858.0" width="240" height="64" rx="8" ry="8" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="875" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">4. Execute BIP Data Model</text><text x="420" y="893" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Executes AP_PO_INV_VAL_DM</text><text x="420" y="912.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">Oracle Fusion BIP</text></g><g class="flow-node" id="node-d_po_exists" onclick="inspectNode('d_po_exists')"><polygon points="420,958.0 530.0,1000 420,1042.0 310.0,1000" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="992" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">PO Exists in</text><text x="420" y="1008" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">po_headers_all?</text></g><g class="flow-node" id="node-d_supp_match" onclick="inspectNode('d_supp_match')"><polygon points="420,1068.0 530.0,1110 420,1152.0 310.0,1110" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="1102" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">All Lines Share</text><text x="420" y="1118" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Same Supplier ID?</text></g><g class="flow-node" id="node-d_dup_inv" onclick="inspectNode('d_dup_inv')"><polygon points="420,1178.0 530.0,1220 420,1262.0 310.0,1220" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="1212" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Invoice # Unique in</text><text x="420" y="1228" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">ap_invoices_all?</text></g><g class="flow-node" id="node-d_numeric" onclick="inspectNode('d_numeric')"><polygon points="420,1288.0 530.0,1330 420,1372.0 310.0,1330" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="1322" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Numeric Integrity?</text><text x="420" y="1338" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Valid Qty, Price & Net</text></g><g class="flow-node" id="node-d_gross_math" onclick="inspectNode('d_gross_math')"><polygon points="420,1398.0 530.0,1440 420,1482.0 310.0,1440" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="1432" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Gross Math Valid?</text><text x="420" y="1448" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">|Net+Charges-Gross| <= 0.50</text></g><g class="flow-node" id="node-d_type_branch" onclick="inspectNode('d_type_branch')"><polygon points="420,1523.0 545.0,1570 420,1617.0 295.0,1570" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="420" y="1562" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Invoice Type</text><text x="420" y="1578" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">(:p_invoice_type)?</text></g><g class="flow-node" id="node-p_status" onclick="inspectNode('p_status')"><polygon points="250,1678.0 360.0,1720 250,1762.0 140.0,1720" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2" filter="url(#drop-shadow)"/><text x="250" y="1712" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">PO Status Eligible?</text><text x="250" y="1728" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Status in OPEN/APPROVED</text></g><g class="flow-node" id="node-p_terms" onclick="inspectNode('p_terms')"><polygon points="250,1788.0 360.0,1830 250,1872.0 140.0,1830" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2" filter="url(#drop-shadow)"/><text x="250" y="1822" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Payment Terms</text><text x="250" y="1838" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Allow Prepayment?</text></g><g class="flow-node" id="node-p_line_match" onclick="inspectNode('p_line_match')"><polygon points="250,1898.0 360.0,1940 250,1982.0 140.0,1940" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2" filter="url(#drop-shadow)"/><text x="250" y="1932" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Match PO Line?</text><text x="250" y="1948" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Item # or Fuzzy >= 70%</text></g><g class="flow-node" id="node-p_balance" onclick="inspectNode('p_balance')"><polygon points="250,2008.0 360.0,2050 250,2092.0 140.0,2050" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2" filter="url(#drop-shadow)"/><text x="250" y="2042" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Amount Ceiling Check?</text><text x="250" y="2058" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Net <= Unbilled PO Balance</text></g><g class="flow-node" id="node-p_derive" onclick="inspectNode('p_derive')"><rect x="130.0" y="2128.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2" filter="url(#drop-shadow)"/><text x="250" y="2145" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Derive & Split Qty</text><text x="250" y="2163" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Qty = Net / Unit Price (No GRN)</text><text x="250" y="2182.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">MATCH_TYPE: PREPAYMENT</text></g><g class="flow-node" id="node-s_line_match" onclick="inspectNode('s_line_match')"><polygon points="600,1678.0 710.0,1720 600,1762.0 490.0,1720" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" filter="url(#drop-shadow)"/><text x="600" y="1712" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Match PO Line?</text><text x="600" y="1728" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Item # or Fuzzy >= 70%</text></g><g class="flow-node" id="node-s_basis" onclick="inspectNode('s_basis')"><polygon points="600,1788.0 710.0,1830 600,1872.0 490.0,1830" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" filter="url(#drop-shadow)"/><text x="600" y="1822" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">receipt_required_flag</text><text x="600" y="1838" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">on PO Schedule?</text></g><g class="flow-node" id="node-w3_grn" onclick="inspectNode('w3_grn')"><polygon points="470,1918.0 580.0,1960 470,2002.0 360.0,1960" fill="#F0FDFA" stroke="#0D9488" stroke-width="2" filter="url(#drop-shadow)"/><text x="470" y="1952" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Open GRN Exists?</text><text x="470" y="1968" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">rcv_transactions > 0</text></g><g class="flow-node" id="node-w3_price" onclick="inspectNode('w3_price')"><polygon points="470,2028.0 580.0,2070 470,2112.0 360.0,2070" fill="#F0FDFA" stroke="#0D9488" stroke-width="2" filter="url(#drop-shadow)"/><text x="470" y="2062" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Price Match?</text><text x="470" y="2078" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">|Inv - PO Price| <= 0.02</text></g><g class="flow-node" id="node-w3_qty" onclick="inspectNode('w3_qty')"><polygon points="470,2138.0 580.0,2180 470,2222.0 360.0,2180" fill="#F0FDFA" stroke="#0D9488" stroke-width="2" filter="url(#drop-shadow)"/><text x="470" y="2172" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Quantity Check?</text><text x="470" y="2188" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Inv Qty <= GRN Qty (Partial OK)</text></g><g class="flow-node" id="node-w3_math" onclick="inspectNode('w3_math')"><polygon points="470,2248.0 580.0,2290 470,2332.0 360.0,2290" fill="#F0FDFA" stroke="#0D9488" stroke-width="2" filter="url(#drop-shadow)"/><text x="470" y="2282" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Line Math Check?</text><text x="470" y="2298" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">|Qty*Price - Net| <= 0.50</text></g><g class="flow-node" id="node-w3_alloc" onclick="inspectNode('w3_alloc')"><rect x="350.0" y="2368.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#0D9488" stroke-width="2" filter="url(#drop-shadow)"/><text x="470" y="2385" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Allocate Open GRNs</text><text x="470" y="2403" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Record receipt_num in XML</text><text x="470" y="2422.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">MATCH_TYPE: 3-WAY</text></g><g class="flow-node" id="node-w2_price" onclick="inspectNode('w2_price')"><polygon points="750,1918.0 860.0,1960 750,2002.0 640.0,1960" fill="#FFFBEB" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)"/><text x="750" y="1952" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Price Match?</text><text x="750" y="1968" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">|Inv - PO Price| <= 0.02</text></g><g class="flow-node" id="node-w2_balance" onclick="inspectNode('w2_balance')"><polygon points="750,2028.0 860.0,2070 750,2112.0 640.0,2070" fill="#FFFBEB" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)"/><text x="750" y="2062" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Balance Check?</text><text x="750" y="2078" text-anchor="middle" font-size="11" font-weight="500" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Net <= Open Schedule Amount</text></g><g class="flow-node" id="node-w2_derive" onclick="inspectNode('w2_derive')"><rect x="630.0" y="2148.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)"/><text x="750" y="2165" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Auto-Derive Qty</text><text x="750" y="2183" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Qty = Net / Unit Price</text><text x="750" y="2202.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">Service Invoicing</text></g><g class="flow-node" id="node-w2_alloc" onclick="inspectNode('w2_alloc')"><rect x="630.0" y="2368.0" width="240" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)"/><text x="750" y="2385" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Allocate Schedule Amount</text><text x="750" y="2403" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Record amount in XML (No GRN)</text><text x="750" y="2422.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">MATCH_TYPE: 2-WAY</text></g><g class="flow-node" id="node-charges" onclick="inspectNode('charges')"><rect x="280.0" y="2528.0" width="280" height="64" rx="8" ry="8" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="url(#drop-shadow)"/><text x="420" y="2545" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">5. Add Special Charges</text><text x="420" y="2563" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Tariff (GL: USA_TARIFF) & Freight</text><text x="420" y="2582.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">AP_PO_INV_VAL_DM.sql</text></g><g class="flow-node" id="node-post_ap" onclick="inspectNode('post_ap')"><rect x="280.0" y="2638.0" width="280" height="64" rx="8" ry="8" fill="#F0FDFA" stroke="#0D9488" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="420" y="2655" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">6. POST to Oracle Fusion AP</text><text x="420" y="2673" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Payables Invoices REST API</text><text x="420" y="2692.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">OIC Integration</text></g><g class="flow-node" id="node-success" onclick="inspectNode('success')"><rect x="280.0" y="2750.0" width="280" height="60" rx="30.0" ry="30.0" fill="#F0FDF4" stroke="#16A34A" stroke-width="3" filter="url(#drop-shadow)"/><text x="420" y="2771" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">INVOICE CREATED IN ORACLE AP</text><text x="420" y="2789" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Ready for Payment Processing</text></g><g class="flow-node" id="node-err_preflight" onclick="inspectNode('err_preflight')"><rect x="1050.0" y="280.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#DC2626" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="301" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">TERMINAL REJECT: Bad File</text><text x="1180" y="319" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">MIME unsupported or Size > 50MB</text></g><g class="flow-node" id="node-err_classify" onclick="inspectNode('err_classify')"><rect x="1050.0" y="400.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#DC2626" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="421" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">TERMINAL FAIL: Invalid Doc Type</text><text x="1180" y="439" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Credit Memo, Statement, Utility</text></g><g class="flow-node" id="node-err_enact_gate" onclick="inspectNode('err_enact_gate')"><rect x="1050.0" y="640.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="661" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Enact Quality Failure</text><text x="1180" y="679" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Confidence < 0.80 or Missing Field</text></g><g class="flow-node" id="node-err_po" onclick="inspectNode('err_po')"><rect x="1050.0" y="970.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="991" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">BIP Error: PO Not Found</text><text x="1180" y="1009" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">PO does not exist in po_headers_all</text></g><g class="flow-node" id="node-err_supp" onclick="inspectNode('err_supp')"><rect x="1050.0" y="1080.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1101" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">BIP Error: Supplier Mismatch</text><text x="1180" y="1119" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">PO lines belong to different vendors</text></g><g class="flow-node" id="node-err_dup" onclick="inspectNode('err_dup')"><rect x="1050.0" y="1190.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1211" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">BIP Error: Duplicate Invoice</text><text x="1180" y="1229" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Invoice # already exists for vendor</text></g><g class="flow-node" id="node-err_numeric" onclick="inspectNode('err_numeric')"><rect x="1050.0" y="1300.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1321" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">BIP Error: Numeric Parse Error</text><text x="1180" y="1339" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Non-numeric qty/price or missing net</text></g><g class="flow-node" id="node-err_gross" onclick="inspectNode('err_gross')"><rect x="1050.0" y="1410.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1431" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">BIP Error: Gross Math Mismatch</text><text x="1180" y="1449" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">|Sum of Nets + Charges - Gross| > 0.50</text></g><g class="flow-node" id="node-err_prepay" onclick="inspectNode('err_prepay')"><rect x="1050.0" y="1850.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1871" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Prepayment Error</text><text x="1180" y="1889" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Status/Terms Ineligible or > Balance</text></g><g class="flow-node" id="node-err_line_match" onclick="inspectNode('err_line_match')"><rect x="1050.0" y="1690.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="1711" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Standard Line Mismatch</text><text x="1180" y="1729" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">No PO line match (Item/Desc < 70%)</text></g><g class="flow-node" id="node-err_3way" onclick="inspectNode('err_3way')"><rect x="1050.0" y="2150.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="2171" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">3-Way Match Discrepancy</text><text x="1180" y="2189" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">No GRN, Price mismatch, or Qty > GRN</text></g><g class="flow-node" id="node-err_2way" onclick="inspectNode('err_2way')"><rect x="1050.0" y="2040.0" width="260" height="60" rx="8" ry="8" fill="#FEF2F2" stroke="#EF4444" stroke-width="2" filter="url(#drop-shadow)"/><text x="1180" y="2061" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">2-Way Match Discrepancy</text><text x="1180" y="2079" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Price mismatch or Net > Schedule Balance</text></g><g class="flow-node" id="node-hitl_hub" onclick="inspectNode('hitl_hub')"><rect x="1030.0" y="2565.0" width="300" height="70" rx="8" ry="8" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="1180" y="2585" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Error Aggregator & Manifest</text><text x="1180" y="2603" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Consolidates all BIP & Enact errors</text><text x="1180" y="2625.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">ValidationService</text></g><g class="flow-node" id="node-hitl_worklist" onclick="inspectNode('hitl_worklist')"><rect x="1030.0" y="2690.0" width="300" height="80" rx="10" ry="10" fill="#FFFDF8" stroke="#D97706" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="1180" y="2706" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">HITL Reviewer Worklist (PENDING_REVIEW)</text><text x="1180" y="2724" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">• Split-screen view: Document PDF vs Data</text><text x="1180" y="2742" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">• Reviewer updates PO, lines, or variances</text><text x="1180" y="2760.0" text-anchor="middle" font-size="10" font-weight="600" fill="#2563EB" font-family="JetBrains Mono, monospace">Human-in-the-Loop</text></g><g class="flow-node" id="node-d_reviewer" onclick="inspectNode('d_reviewer')"><polygon points="1180,2833.0 1305.0,2880 1180,2927.0 1055.0,2880" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="1180" y="2880" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">Reviewer Decision?</text></g><g class="flow-node" id="node-hitl_rejected" onclick="inspectNode('hitl_rejected')"><rect x="940.0" y="2985.0" width="200" height="50" rx="8" ry="8" fill="#FEF2F2" stroke="#DC2626" stroke-width="2" filter="url(#drop-shadow)"/><text x="1040" y="3001" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">TERMINAL REJECT</text><text x="1040" y="3019" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Document Cancelled</text></g><g class="flow-node" id="node-hitl_approved" onclick="inspectNode('hitl_approved')"><rect x="1210.0" y="2985.0" width="220" height="50" rx="8" ry="8" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2.5" filter="url(#drop-shadow)"/><text x="1320" y="3001" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A" font-family="Inter, -apple-system, sans-serif">CORRECT & RE-DISPATCH</text><text x="1320" y="3019" text-anchor="middle" font-size="11" font-weight="500" fill="#475569" font-family="Inter, -apple-system, sans-serif">Approved by Reviewer</text></g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div id="node-modal">
+    <div class="modal-header">
+      <span class="modal-title" id="m-title">Validation Details</span>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-desc" id="m-desc"></div>
+    <div class="modal-code" id="m-code"></div>
+  </div>
+
+  <script>
+    let currentZoom = 1.0;
+    const viewport = document.getElementById('viewport');
+    const container = document.getElementById('svg-container');
+    const zoomText = document.getElementById('zoom-text');
+
+    function updateTransform() {
+      container.style.transform = `scale(${currentZoom})`;
+      zoomText.textContent = `${Math.round(currentZoom * 100)}%`;
+    }
+
+    function zoomBy(d) {
+      currentZoom = Math.max(0.3, Math.min(2.0, currentZoom + d));
+      updateTransform();
+    }
+
+    function resetZoom() {
+      currentZoom = 1.0;
+      updateTransform();
+      viewport.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+
+    function fitView() {
+      const vw = viewport.clientWidth - 80;
+      currentZoom = Math.min(1.0, Math.max(0.4, vw / 1600));
+      updateTransform();
+      viewport.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+
+    // Pan via dragging
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let scrollLeft = 0, scrollTop = 0;
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.flow-node') || e.target.closest('button')) return;
+      isDragging = true;
+      viewport.classList.add('dragging');
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = viewport.scrollLeft;
+      scrollTop = viewport.scrollTop;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      viewport.scrollLeft = scrollLeft - (e.clientX - startX);
+      viewport.scrollTop = scrollTop - (e.clientY - startY);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+      viewport.classList.remove('dragging');
+    });
+
+    // Modal Inspector
+    const nodeDetails = {
+      "start": { title: "Document Ingestion", desc: "Raw PDF or image received via email ingestion or API. Maximum size: 50MB.", code: "PreFlightStep.java" },
+      "d_preflight": { title: "PreFlight Gate", desc: "Validates MIME format (PDF, TIFF, PNG, JPEG) and file size <= 50MB.", code: "PREFLIGHT_VALIDATION_FAILED" },
+      "d_classify": { title: "Document Classification", desc: "Validates document is an INVOICE. Any other document type (Credit Memo, Statement) is terminated.", code: "INVALID_DOCUMENT_TYPE" },
+      "d_enact_gate": { title: "Enact Quality Gate", desc: "Ensures AI extraction confidence >= 0.80 and mandatory fields (inv_num, date, po_num) are present.", code: "ENACT_QUALITY_GATE_FAILED" },
+      "d_po_exists": { title: "PO Existence Check", desc: "Queries po_headers_all where segment1 = :first_po to resolve vendor_id and site.", code: "PO not found: <PO_NUMBER>" },
+      "d_supp_match": { title: "Supplier Consistency", desc: "Ensures all distinct PO numbers on the invoice share the exact same vendor_id.", code: "PO belongs to a different supplier" },
+      "d_dup_inv": { title: "Duplicate Check", desc: "Queries ap_invoices_all for existing invoice_num under this vendor.", code: "Invoice already exists for supplier" },
+      "d_numeric": { title: "Numeric Integrity", desc: "Ensures all line quantities, unit prices, and net amounts are valid numbers and net_amount is non-null.", code: "Invalid quantity/price/net at line" },
+      "d_gross_math": { title: "Gross Math Reconciliation", desc: "Cross-checks |Sum of Nets + Freight + Tax + Tariff - Gross| <= 0.50.", code: "Gross amount mismatch" },
+      "d_type_branch": { title: "Invoice Type Routing", desc: "Branches by :p_invoice_type into Path A: PREPAYMENT or Path B: STANDARD.", code: ":p_invoice_type" },
+      "w3_grn": { title: "3-Way GRN Verification", desc: "Checks rcv_transactions for unbilled receipt quantity.", code: "rcv_transactions.quantity - quantity_billed > 0" },
+      "w3_qty": { title: "3-Way Quantity Check", desc: "Permits lesser invoiced quantity (partial deliveries). Rejects over-billing.", code: "alloc_qty = LEAST(remaining, avail)" },
+      "hitl_approved": { title: "Reviewer Approval", desc: "Reviewer submits corrections. Pipeline re-dispatches payload back to OIC for re-validation.", code: "Re-dispatch Loop" }
+    };
+
+    function inspectNode(id) {
+      const data = nodeDetails[id];
+      if (!data) return;
+      document.getElementById('m-title').textContent = data.title;
+      document.getElementById('m-desc').textContent = data.desc;
+      document.getElementById('m-code').textContent = data.code;
+      document.getElementById('node-modal').classList.add('visible');
+    }
+
+    function closeModal() {
+      document.getElementById('node-modal').classList.remove('visible');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fitView();
+    });
+  </script>
+</body>
+</html>
